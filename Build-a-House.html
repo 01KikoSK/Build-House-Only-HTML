@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Build-a-House — HTML Only</title>
+<style>
+  :root{
+    --bg:#0f1220; --card:#171a2b; --muted:#9aa3b2; --text:#e6ebf5; --accent:#5ad1ff; --accent2:#7cffb3; --danger:#ff6b6b; --warn:#ffd166;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font:14px/1.4 system-ui,Segoe UI,Roboto,Ubuntu,sans-serif;
+    background:linear-gradient(180deg,#0c1022, #0f1220 30%, #0d0f1b 100%);
+    color:var(--text);
+  }
+  header{
+    position:sticky; top:0; z-index:10; backdrop-filter:saturate(150%) blur(6px);
+    background:rgba(15,18,32,0.7); border-bottom:1px solid #22263a; padding:10px 14px;
+  }
+  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  .stat{
+    background:var(--card); border:1px solid #22263a; padding:8px 10px; border-radius:10px; min-width:140px;
+  }
+  .stat b{color:var(--accent)}
+  .wrap{max-width:1200px; margin:16px auto; padding:0 14px 32px}
+  .grid{display:grid; gap:14px}
+  @media(min-width:1000px){ .grid{grid-template-columns: 1.2fr 1fr 1fr} }
+  section{
+    background:var(--card); border:1px solid #22263a; border-radius:14px; padding:14px;
+  }
+  h2{margin:0 0 8px; font-size:18px; font-weight:700}
+  h3{margin:12px 0 8px; font-size:15px; color:var(--muted)}
+  .muted{color:var(--muted)}
+  .pill{display:inline-block; padding:2px 8px; border-radius:999px; background:#1f2339; border:1px solid #2a3050; color:var(--muted); font-size:12px}
+  .btn{
+    cursor:pointer; border:none; border-radius:10px; padding:8px 10px; color:#0e1220; font-weight:700;
+    background:linear-gradient(180deg, #7ce3ff, #5ad1ff); box-shadow:0 3px 0 #1f6a82;
+    transition:transform .02s ease, filter .15s ease;
+  }
+  .btn:disabled{filter:grayscale(.8) brightness(.7); cursor:not-allowed; box-shadow:none}
+  .btn:active{transform:translateY(1px)}
+  .btn.alt{background:linear-gradient(180deg,#9dffcb,#7cffb3); box-shadow:0 3px 0 #2b7a58}
+  .btn.warn{background:linear-gradient(180deg,#ffe08a,#ffd166); box-shadow:0 3px 0 #9b7a17}
+  .btn.danger{background:linear-gradient(180deg,#ff9aa0,#ff6b6b); box-shadow:0 3px 0 #9b2d2d}
+  .rowbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0}
+  .small{font-size:12px}
+  .list{display:grid; gap:8px}
+  .item{
+    background:#131626; border:1px solid #22263a; border-radius:12px; padding:10px;
+    display:grid; grid-template-columns: 1fr auto; gap:6px; align-items:center;
+  }
+  .item .title{font-weight:700}
+  .reqs{display:flex; flex-wrap:wrap; gap:6px}
+  .req{padding:2px 6px; border-radius:8px; background:#0f1324; border:1px dashed #2c355a; color:var(--muted); font-size:12px}
+  .inventory{display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:8px}
+  .card{
+    background:#131626; border:1px solid #22263a; border-radius:12px; padding:10px;
+  }
+  .shop{display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px}
+  .ghost{opacity:.55}
+  .ok{color:var(--accent2)}
+  .bad{color:var(--danger)}
+  .tag{padding:2px 6px; border-radius:8px; background:#101529; border:1px solid #232a48; color:var(--muted); font-size:12px}
+  .plot{display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:10px}
+  .footer{margin-top:14px; display:flex; gap:8px; flex-wrap:wrap}
+  .hr{height:1px; background:#22263a; margin:10px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <div class="stat"><b>Funds:</b> <span id="funds">$0</span></div>
+    <div class="stat"><b>Net worth:</b> <span id="worth">$0</span></div>
+    <div class="stat"><b>Rebirth:</b> <span id="rebirth">0</span> <span class="pill" id="multix">x1.00</span></div>
+    <div class="stat"><b>Shop restock:</b> <span id="restock">00:14</span></div>
+    <div class="stat"><b>Save:</b> <span id="savestatus" class="muted">idle</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <section>
+      <h2>Materials inventory</h2>
+      <div class="inventory" id="inventory"></div>
+      <div class="rowbar">
+        <button class="btn alt" id="workBtn">Work (+$5)</button>
+        <button class="btn" id="starterBtn">Claim starter pack</button>
+        <button class="btn warn small" id="saveBtn">Save</button>
+        <button class="btn danger small" id="resetBtn">Hard reset</button>
+        <span class="pill">Progress autosaves</span>
+      </div>
+      <div class="small muted">Work earnings and net worth gains scale with your rebirth multiplier.</div>
+
+      <div class="hr"></div>
+      <h2>Shop</h2>
+      <div class="rowbar small"><span class="muted">New stock every 14s. Prices vary slightly each restock.</span></div>
+      <div class="shop" id="shop"></div>
+    </section>
+
+    <section>
+      <h2>Blueprints</h2>
+      <div class="list" id="blueprints"></div>
+    </section>
+
+    <section>
+      <h2>My plot</h2>
+      <div id="plot" class="plot"></div>
+      <div class="footer">
+        <button class="btn alt small" id="sellAllBtn">Sell plot (+Funds, -Net worth)</button>
+        <span class="small muted">Sells all built structures at 60% of their worth.</span>
+      </div>
+
+      <div class="hr"></div>
+      <h2>Rebirth</h2>
+      <div class="list">
+        <div class="item">
+          <div>
+            <div class="title">Rebirth 1</div>
+            <div class="small muted">Requirement: Net worth ≥ $3,000. Reward: +0.5x permanent multiplier; unlocks metal roofing.</div>
+          </div>
+          <button class="btn" id="rb1">Rebirth 1</button>
+        </div>
+        <div class="item">
+          <div>
+            <div class="title">Rebirth 2</div>
+            <div class="small muted">Requirement: Net worth ≥ $20,000. Reward: +0.7x permanent multiplier; unlocks garage.</div>
+          </div>
+          <button class="btn" id="rb2">Rebirth 2</button>
+        </div>
+        <div class="item">
+          <div>
+            <div class="title">Rebirth 3</div>
+            <div class="small muted">Requirement: Net worth ≥ $100,000. Reward: +1.0x permanent multiplier; unlocks solar rack.</div>
+          </div>
+          <button class="btn" id="rb3">Rebirth 3</button>
+        </div>
+      </div>
+      <div class="rowbar small muted">
+        Rebirthing resets funds, materials, and plot, but keeps your multiplier and unlocks. Starter pack can be claimed again after rebirth.
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Data ----------
+  const MATERIALS = [
+    {id:'woodenLog', name:'Wooden log', icon:'🪵', basePrice:2},
+    {id:'nails', name:'Nails', icon:'📎', basePrice:1},
+    {id:'bricks', name:'Bricks', icon:'🧱', basePrice:3},
+    {id:'mortar', name:'Mortar', icon:'🪣', basePrice:2},
+    {id:'metalSheet', name:'Metal sheet', icon:'🧩', basePrice:5},
+  ];
+
+  const BLUEPRINTS = [
+    {
+      id:'foundation',
+      name:'Foundation',
+      worth:600,
+      requires:{bricks:50, mortar:20},
+      unlockRebirth:0,
+      emoji:'🧱'
+    },
+    {
+      id:'woodWall',
+      name:'Wooden wall',
+      worth:120,
+      requires:{woodenLog:10, nails:20},
+      unlockRebirth:0,
+      emoji:'🪵'
+    },
+    {
+      id:'brickWall',
+      name:'Brick wall',
+      worth:300,
+      requires:{bricks:30, mortar:10},
+      unlockRebirth:0,
+      emoji:'🧱'
+    },
+    {
+      id:'window',
+      name:'Window frame',
+      worth:100,
+      requires:{woodenLog:4, nails:8},
+      unlockRebirth:0,
+      emoji:'🪟'
+    },
+    {
+      id:'door',
+      name:'Reinforced door',
+      worth:180,
+      requires:{woodenLog:5, nails:10, metalSheet:2},
+      unlockRebirth:0,
+      emoji:'🚪'
+    },
+    {
+      id:'roofWood',
+      name:'Wood roof',
+      worth:400,
+      requires:{woodenLog:20, nails:25},
+      unlockRebirth:0,
+      emoji:'🏠'
+    },
+    {
+      id:'chimney',
+      name:'Chimney',
+      worth:250,
+      requires:{bricks:20, mortar:15},
+      unlockRebirth:0,
+      emoji:'🏭'
+    },
+    {
+      id:'fence',
+      name:'Fence section',
+      worth:90,
+      requires:{woodenLog:8, nails:12},
+      unlockRebirth:0,
+      emoji:'🚧'
+    },
+    {
+      id:'roofMetal',
+      name:'Metal roof panel',
+      worth:650,
+      requires:{metalSheet:15, nails:20},
+      unlockRebirth:1,
+      emoji:'🏚️'
+    },
+    {
+      id:'garage',
+      name:'Detached garage',
+      worth:1000,
+      requires:{bricks:60, mortar:25, metalSheet:10},
+      unlockRebirth:2,
+      emoji:'🚗'
+    },
+    {
+      id:'solar',
+      name:'Solar rack',
+      worth:700,
+      requires:{metalSheet:12, nails:12},
+      unlockRebirth:3,
+      emoji:'🔆'
+    },
+  ];
+
+  const RB_REQ = {1:3000, 2:20000, 3:100000};  // net worth thresholds
+  const RB_GAIN = {1:0.5, 2:0.7, 3:1.0};       // additive multiplier per tier
+
+  const STARTER_PACK = {
+    funds: 150,
+    materials: {woodenLog:25, nails:60, bricks:40, mortar:20, metalSheet:6}
+  };
+
+  // ---------- State ----------
+  const blankState = () => ({
+    funds: 50,
+    netWorth: 0,
+    rebirth: 0,
+    multiplier: 1,
+    inventory: {woodenLog:0, nails:0, bricks:0, mortar:0, metalSheet:0},
+    plot: [], // entries: {id, name, worth, emoji}
+    starterAvailable: true,
+    unlocks: {1:false, 2:false, 3:false},
+    shop: {
+      restockIn: 14, // seconds
+      stock: {} // materialId -> {qty, price}
+    },
+    lastSave: 0
+  });
+
+  let S = load() || blankState();
+  ensureShopStock();
+
+  // ---------- Helpers ----------
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  function fmt(n){
+    return '$' + n.toLocaleString();
+  }
+  function fmtQty(n){ return n.toLocaleString(); }
+
+  function hasMats(req){
+    return Object.entries(req).every(([k,v]) => (S.inventory[k]||0) >= v);
+  }
+
+  function addWorth(base){
+    const gain = Math.round(base * S.multiplier);
+    S.netWorth += gain;
+    return gain;
+  }
+
+  function addToPlot(bp){
+    S.plot.push({id:bp.id, name:bp.name, worth:bp.worth, emoji:bp.emoji});
+  }
+
+  function countInPlot(id){
+    return S.plot.filter(p => p.id===id).length;
+  }
+
+  function canRebirth(tier){
+    if (S.rebirth >= tier) return false;
+    return S.netWorth >= RB_REQ[tier];
+  }
+
+  function doRebirth(tier){
+    if (!canRebirth(tier)) return;
+    S.rebirth = tier;
+    S.multiplier = 1 + (S.unlocks[1]?RB_GAIN[1]:0) + (S.unlocks[2]?RB_GAIN[2]:0) + (S.unlocks[3]?RB_GAIN[3]:0);
+    // mark current tier unlocked
+    S.unlocks[tier] = true;
+    // reset progress
+    S.funds = 50;
+    S.netWorth = 0;
+    for (const m of MATERIALS) S.inventory[m.id] = 0;
+    S.plot = [];
+    S.starterAvailable = true;
+    // refresh shop immediately
+    restockShop(true);
+    save('rebirth');
+    render();
+  }
+
+  function ensureShopStock(){
+    if (!S.shop.stock || typeof S.shop.stock !== 'object') S.shop.stock = {};
+    if (typeof S.shop.restockIn !== 'number') S.shop.restockIn = 14;
+    if (Object.keys(S.shop.stock).length === 0){
+      restockShop(true);
+    }
+  }
+
+  function restockShop(resetTimer=false){
+    // randomize quantities and prices based on base price ±20%, quantity 6–20; slight bonus with higher rebirth
+    const bonusQty = S.rebirth * 2;
+    const newStock = {};
+    for (const m of MATERIALS){
+      const qty = Math.floor(6 + Math.random()*15 + bonusQty);
+      const price = Math.max(1, Math.round(m.basePrice * (0.8 + Math.random()*0.4)));
+      newStock[m.id] = {qty, price};
+    }
+    S.shop.stock = newStock;
+    if (resetTimer) S.shop.restockIn = 14;
+  }
+
+  function buy(id, amount){
+    const slot = S.shop.stock[id];
+    if (!slot) return;
+    amount = Math.min(amount, slot.qty);
+    const cost = amount * slot.price;
+    if (amount <= 0 || S.funds < cost) return;
+    S.funds -= cost;
+    S.inventory[id] = (S.inventory[id]||0) + amount;
+    slot.qty -= amount;
+    renderTop();
+    renderInventory();
+    renderShop();
+    queueSave();
+  }
+
+  function build(bp){
+    if (!bp) return;
+    if (S.rebirth < bp.unlockRebirth) return;
+    if (!hasMats(bp.requires)) return;
+    // pay materials
+    for (const [k,v] of Object.entries(bp.requires)){
+      S.inventory[k] -= v;
+    }
+    const gained = addWorth(bp.worth);
+    addToPlot(bp);
+    flashSave('Built +' + fmt(gained) + ' NW');
+    renderAll();
+    queueSave();
+  }
+
+  function sellAll(){
+    if (S.plot.length === 0) return;
+    const total = S.plot.reduce((a,b)=>a+b.worth,0);
+    const payout = Math.round(total * 0.6); // 60% resale
+    S.plot = [];
+    S.funds += payout;
+    S.netWorth = 0; // assets sold off
+    flashSave('Sold plot +' + fmt(payout));
+    renderAll();
+    queueSave();
+  }
+
+  function claimStarter(){
+    if (!S.starterAvailable) return;
+    S.starterAvailable = false;
+    S.funds += STARTER_PACK.funds;
+    for (const [id,qty] of Object.entries(STARTER_PACK.materials)){
+      S.inventory[id] = (S.inventory[id]||0) + qty;
+    }
+    flashSave('Starter pack claimed');
+    renderAll();
+    queueSave();
+  }
+
+  function work(){
+    const base = 5;
+    const gain = Math.round(base * S.multiplier);
+    S.funds += gain;
+    renderTop();
+    flashSave('Worked +' + fmt(gain));
+    queueSave();
+  }
+
+  // ---------- Render ----------
+  const elFunds = $('#funds');
+  const elWorth = $('#worth');
+  const elRebirth = $('#rebirth');
+  const elMulti = $('#multix');
+  const elRestock = $('#restock');
+  const elInv = $('#inventory');
+  const elShop = $('#shop');
+  const elBps = $('#blueprints');
+  const elPlot = $('#plot');
+  const elStarter = $('#starterBtn');
+  const elSaveStatus = $('#savestatus');
+
+  function renderTop(){
+    elFunds.textContent = fmt(S.funds);
+    elWorth.textContent = fmt(S.netWorth);
+    elRebirth.textContent = S.rebirth.toString();
+    elMulti.textContent = 'x' + S.multiplier.toFixed(2);
+    elStarter.disabled = !S.starterAvailable;
+    // Rebirth buttons
+    $('#rb1').disabled = !canRebirth(1);
+    $('#rb2').disabled = !canRebirth(2);
+    $('#rb3').disabled = !canRebirth(3);
+  }
+
+  function renderInventory(){
+    elInv.innerHTML = '';
+    for (const m of MATERIALS){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="rowbar" style="justify-content:space-between">
+          <div><span class="title">${m.icon} ${m.name}</span></div>
+          <div class="pill">In stock: <b>${fmtQty(S.inventory[m.id]||0)}</b></div>
+        </div>
+      `;
+      elInv.appendChild(card);
+    }
+  }
+
+  function renderShop(){
+    elShop.innerHTML = '';
+    for (const m of MATERIALS){
+      const slot = S.shop.stock[m.id];
+      const qty = slot?.qty ?? 0;
+      const price = slot?.price ?? m.basePrice;
+      const canBuy1 = (S.funds >= price) && qty>0;
+      const canBuyMax = qty>0 && (S.funds >= price);
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <div class="rowbar" style="justify-content:space-between">
+          <div class="title">${m.icon} ${m.name}</div>
+          <span class="tag">Price: ${fmt(price)}</span>
+        </div>
+        <div class="rowbar" style="justify-content:space-between">
+          <span class="muted small">Stock: ${fmtQty(qty)}</span>
+          <div class="rowbar">
+            <button class="btn small" ${canBuy1?'':'disabled'} data-buy="${m.id}" data-amt="1">Buy 1</button>
+            <button class="btn small" ${canBuyMax?'':'disabled'} data-buy="${m.id}" data-amt="10">Buy 10</button>
+            <button class="btn small" ${canBuyMax?'':'disabled'} data-buy="${m.id}" data-amt="max">Buy Max</button>
+          </div>
+        </div>
+      `;
+      elShop.appendChild(div);
+    }
+    elShop.querySelectorAll('[data-buy]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const id = btn.getAttribute('data-buy');
+        const amt = btn.getAttribute('data-amt');
+        let n = 1;
+        const slot = S.shop.stock[id];
+        if (!slot) return;
+        if (amt === '10') n = 10;
+        else if (amt === 'max') n = Math.min(slot.qty, Math.floor(S.funds / slot.price));
+        buy(id, n);
+      });
+    });
+  }
+
+  function renderBlueprints(){
+    elBps.innerHTML = '';
+    for (const bp of BLUEPRINTS){
+      const unlocked = S.rebirth >= bp.unlockRebirth;
+      const can = unlocked && hasMats(bp.requires);
+      const count = countInPlot(bp.id);
+      const div = document.createElement('div');
+      div.className = 'item' + (unlocked?'':' ghost');
+      const reqsHtml = Object.entries(bp.requires).map(([k,v])=>{
+        const mat = MATERIALS.find(m=>m.id===k);
+        const have = S.inventory[k]||0;
+        const ok = have>=v;
+        return `<span class="req ${ok?'ok':'bad'}">${mat.icon} ${mat.name}: ${fmtQty(have)}/${fmtQty(v)}</span>`;
+      }).join('');
+      const lockTxt = unlocked ? '' : `<span class="pill">Unlocks at Rebirth ${bp.unlockRebirth}</span>`;
+      div.innerHTML = `
+        <div>
+          <div class="title">${bp.emoji} ${bp.name} ${count>0?`<span class="pill">Built: ${count}</span>`:''}</div>
+          <div class="small muted">Worth: ${fmt(bp.worth)} ${lockTxt}</div>
+          <div class="reqs" style="margin-top:6px">${reqsHtml}</div>
+        </div>
+        <div>
+          <button class="btn" ${can?'':'disabled'} data-build="${bp.id}">Build</button>
+        </div>
+      `;
+      elBps.appendChild(div);
+    }
+    elBps.querySelectorAll('[data-build]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('data-build');
+        const bp = BLUEPRINTS.find(b=>b.id===id);
+        build(bp);
+      });
+    });
+  }
+
+  function renderPlot(){
+    elPlot.innerHTML = '';
+    if (S.plot.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'card';
+      empty.innerHTML = `<div class="muted">Your plot is empty. Build blueprints to increase your net worth.</div>`;
+      elPlot.appendChild(empty);
+      return;
+    }
+    // group by id
+    const grouped = {};
+    for (const p of S.plot){
+      grouped[p.id] = grouped[p.id] || {name:p.name, emoji:p.emoji, count:0, worthEach:p.worth};
+      grouped[p.id].count++;
+    }
+    Object.values(grouped).forEach(g=>{
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.innerHTML = `
+        <div class="title">${g.emoji} ${g.name}</div>
+        <div class="small muted">On plot: ${fmtQty(g.count)} • Worth each: ${fmt(g.worthEach)}</div>
+      `;
+      elPlot.appendChild(c);
+    });
+  }
+
+  function renderAll(){
+    renderTop();
+    renderInventory();
+    renderShop();
+    renderBlueprints();
+    renderPlot();
+  }
+
+  // ---------- Timers ----------
+  setInterval(()=>{
+    if (S.shop.restockIn > 0){
+      S.shop.restockIn -= 1;
+      if (S.shop.restockIn <= 0){
+        restockShop(true);
+        renderShop();
+      }
+    }
+    const t = Math.max(0, S.shop.restockIn);
+    const mm = String(Math.floor(t/60)).padStart(2,'0');
+    const ss = String(t%60).padStart(2,'0');
+    elRestock.textContent = `${mm}:${ss}`;
+  }, 1000);
+
+  // ---------- Save/Load ----------
+  function save(reason='manual'){
+    try{
+      localStorage.setItem('housegame.v1', JSON.stringify(S));
+      S.lastSave = Date.now();
+      setSaveStatus('saved');
+    }catch(e){
+      setSaveStatus('save failed');
+    }
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem('housegame.v1');
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  let saveTimer = null;
+  function queueSave(){
+    if (saveTimer) clearTimeout(saveTimer);
+    setSaveStatus('saving…');
+    saveTimer = setTimeout(()=>save('auto'), 400);
+  }
+  function setSaveStatus(txt){
+    elSaveStatus.textContent = txt;
+    if (txt==='saved'){
+      setTimeout(()=>{ if (elSaveStatus.textContent==='saved') elSaveStatus.textContent='idle'; }, 1500);
+    }
+  }
+  function flashSave(msg){
+    setSaveStatus(msg);
+    setTimeout(()=>setSaveStatus('idle'), 1200);
+  }
+
+  // ---------- Events ----------
+  $('#workBtn').addEventListener('click', work);
+  $('#starterBtn').addEventListener('click', claimStarter);
+  $('#sellAllBtn').addEventListener('click', sellAll);
+  $('#rb1').addEventListener('click', ()=>doRebirth(1));
+  $('#rb2').addEventListener('click', ()=>doRebirth(2));
+  $('#rb3').addEventListener('click', ()=>doRebirth(3));
+  $('#saveBtn').addEventListener('click', ()=>save('manual'));
+  $('#resetBtn').addEventListener('click', ()=>{
+    if (!confirm('Hard reset all progress?')) return;
+    S = blankState();
+    ensureShopStock();
+    save('reset');
+    renderAll();
+  });
+
+  window.addEventListener('beforeunload', ()=>{ try{ save('unload'); }catch(_){} });
+
+  // ---------- Init ----------
+  // Recompute multiplier if loaded from old save
+  S.multiplier = 1 + (S.unlocks[1]?RB_GAIN[1]:0) + (S.unlocks[2]?RB_GAIN[2]:0) + (S.unlocks[3]?RB_GAIN[3]:0);
+  renderAll();
+})();
+</script>
+</body>
+</html>
